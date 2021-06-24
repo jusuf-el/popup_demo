@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+class AlwaysDisabledFocusNode extends FocusNode {
+  @override
+  bool get hasFocus => false;
+}
+
 class Home extends StatefulWidget {
   @override
   _HomeState createState() => _HomeState();
@@ -10,6 +15,9 @@ class _HomeState extends State<Home> {
   bool popupVisible = false;
   TapDownDetails tapDetails;
   String filter = '';
+  int selectedCustomerName = 0;
+  FocusNode _focusNode = FocusNode();
+  FocusNode _textNode = FocusNode();
   List<String> customerNames = [
     'Fortescue Metals Group Ltd (FMG)',
     'Future Engineering : Future Engineering BIB',
@@ -33,9 +41,14 @@ class _HomeState extends State<Home> {
 
   showPopup(TapDownDetails details) {
     setState(() {
-      filteredNames = customerNames;
+      // filteredNames = customerNames;
       popupVisible = true;
       tapDetails = details;
+      selectedCustomerName = 0;
+    });
+
+    _textNode.addListener(() {
+      print(_textNode);
     });
     FocusScope.of(context).unfocus();
   }
@@ -44,12 +57,16 @@ class _HomeState extends State<Home> {
     setState(() {
       popupVisible = false;
       filter = '';
+      filteredNames = [];
+      selectedCustomerName = 0;
     });
+    _textNode.dispose();
     FocusScope.of(context).unfocus();
   }
 
   @override
   Widget build(BuildContext context) {
+    FocusScope.of(context).requestFocus(_focusNode);
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
@@ -175,78 +192,151 @@ class _HomeState extends State<Home> {
                                           ),
                                         ),
                                       ),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey,
-                                        ),
-                                        height: MediaQuery.of(context).size.height * 0.075,
-                                        width: MediaQuery.of(context).size.width * 0.6,
-                                        alignment: Alignment.center,
-                                        child: Container(
-                                          height: MediaQuery.of(context).size.height * 0.05,
-                                          width: MediaQuery.of(context).size.width * 0.55,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.all(Radius.circular(15.0)),
-                                            color: Colors.white,
+                                      Column(
+                                        children: [
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey,
+                                            ),
+                                            height: MediaQuery.of(context).size.height * 0.075,
+                                            width: MediaQuery.of(context).size.width * 0.6,
+                                            alignment: Alignment.center,
+                                            child: Container(
+                                              height: MediaQuery.of(context).size.height * 0.05,
+                                              width: MediaQuery.of(context).size.width * 0.55,
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.all(Radius.circular(15.0)),
+                                                color: Colors.white,
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: TextField(
+                                                focusNode: _focusNode,
+                                                onChanged: (input) {
+                                                  setState(() {
+                                                    filter = input;
+                                                  });
+
+                                                  if (filter != '') {
+                                                    for (int i = 0; i < customerNames.length; i++) {
+                                                      if (customerNames[i].toLowerCase().startsWith(filter.toLowerCase()) && !filteredNames.contains(customerNames[i])) {
+                                                        setState(() {
+                                                          filteredNames.add(customerNames[i]);
+                                                        });
+                                                      }
+
+                                                      if (!customerNames[i].toLowerCase().startsWith(filter.toLowerCase()) && filteredNames.contains(customerNames[i])) {
+                                                        setState(() {
+                                                          filteredNames.remove(customerNames[i]);
+                                                        });
+                                                      }
+                                                    }
+                                                  } else {
+                                                    setState(() {
+                                                      filteredNames = [];
+                                                    });
+                                                  }
+                                                },
+                                                style: TextStyle(
+                                                  fontSize: MediaQuery.of(context).size.height * 0.02,
+                                                ),
+                                                decoration: InputDecoration(
+                                                  hintText: "Filter",
+                                                  hintStyle: TextStyle(
+                                                    fontSize: MediaQuery.of(context).size.height * 0.02,
+                                                  ),
+                                                  border: InputBorder.none,
+                                                  prefixIcon: Icon(
+                                                    Icons.search,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                          alignment: Alignment.center,
-                                          child: TextField(
-                                            onChanged: (input) {
-                                              filter = input;
-                                              setState(() {});
+                                          RawKeyboardListener(
+                                            focusNode: _focusNode,
+                                            onKey: (event) {
+                                              print(event);
+                                              if (event.toString().contains('RawKeyDownEvent') && event.toString().contains('Arrow Down')) {
+                                                if (filter != '') {
+                                                  if (selectedCustomerName < filteredNames.length - 1) {
+                                                    setState(() {
+                                                      selectedCustomerName++;
+                                                    });
+                                                  }
+                                                } else {
+                                                  if (selectedCustomerName < customerNames.length - 1) {
+                                                    setState(() {
+                                                      selectedCustomerName++;
+                                                    });
+                                                  }
+                                                }
+                                              }
+
+                                              if (event.toString().contains('RawKeyDownEvent') && event.toString().contains('Arrow Up')) {
+                                                if (selectedCustomerName > 0) {
+                                                  setState(() {
+                                                    selectedCustomerName--;
+                                                  });
+                                                }
+                                              }
+
+                                              if (event.toString().contains('RawKeyDownEvent') && event.toString().contains('Enter')) {
+                                                setState(() {
+                                                  if (filter != '') {
+                                                    customerName = filteredNames[selectedCustomerName];
+                                                  } else {
+                                                    customerName = customerNames[selectedCustomerName];
+                                                  }
+                                                  filteredNames = [];
+                                                  closePopup();
+                                                });
+                                              }
                                             },
-                                            style: TextStyle(
-                                              fontSize: MediaQuery.of(context).size.height * 0.02,
-                                            ),
-                                            decoration: InputDecoration(
-                                              hintText: "Filter",
-                                              hintStyle: TextStyle(
-                                                fontSize: MediaQuery.of(context).size.height * 0.02,
-                                              ),
-                                              border: InputBorder.none,
-                                              prefixIcon: Icon(
-                                                Icons.search,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        height: MediaQuery.of(context).size.height * 0.275,
-                                        width: MediaQuery.of(context).size.width * 0.6,
-                                        color: Colors.white,
-                                        child: ListView.builder(
-                                          itemCount: customerNames.length,
-                                          itemBuilder: (context, index) {
-                                            return customerNames[index].toLowerCase().startsWith(filter.toLowerCase())
-                                                ? Column(
+                                            child: Container(
+                                              height: MediaQuery.of(context).size.height * 0.275,
+                                              width: MediaQuery.of(context).size.width * 0.6,
+                                              color: Colors.white,
+                                              child: ListView.builder(
+                                                itemCount: filter != '' ? filteredNames.length : customerNames.length,
+                                                itemBuilder: (context, index) {
+                                                  return
+                                                      // customerNames[index].toLowerCase().startsWith(filter.toLowerCase())
+                                                      //     ?
+                                                      Column(
                                                     children: [
-                                                      ListTile(
-                                                        leading: Container(
-                                                          height: MediaQuery.of(context).size.width * 0.02,
-                                                          width: MediaQuery.of(context).size.width * 0.02,
-                                                          decoration: BoxDecoration(
-                                                            shape: BoxShape.circle,
-                                                            color: Colors.grey,
+                                                      Container(
+                                                        color: selectedCustomerName == index ? Colors.black.withOpacity(0.175) : Colors.white,
+                                                        child: ListTile(
+                                                          leading: Container(
+                                                            height: MediaQuery.of(context).size.width * 0.02,
+                                                            width: MediaQuery.of(context).size.width * 0.02,
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: Colors.grey,
+                                                            ),
                                                           ),
-                                                        ),
-                                                        title: Text(
-                                                          customerNames[index],
-                                                          style: TextStyle(
-                                                            fontSize: MediaQuery.of(context).size.height * 0.02,
-                                                            color: Colors.black,
-                                                            fontWeight: FontWeight.w500,
+                                                          title: Text(
+                                                            filter != '' ? filteredNames[index] : customerNames[index],
+                                                            style: TextStyle(
+                                                              fontSize: MediaQuery.of(context).size.height * 0.02,
+                                                              color: Colors.black,
+                                                              fontWeight: FontWeight.w500,
+                                                            ),
                                                           ),
+                                                          dense: false,
+                                                          onTap: () {
+                                                            setState(() {
+                                                              if (filter != '') {
+                                                                customerName = filteredNames[index];
+                                                              } else {
+                                                                customerName = customerNames[index];
+                                                              }
+                                                              filteredNames = [];
+                                                              closePopup();
+                                                            });
+                                                          },
                                                         ),
-                                                        dense: false,
-                                                        onTap: () {
-                                                          setState(() {
-                                                            customerName = filteredNames[index];
-                                                            filteredNames = customerNames;
-                                                            closePopup();
-                                                          });
-                                                        },
                                                       ),
                                                       Divider(
                                                         color: Colors.grey,
@@ -255,10 +345,13 @@ class _HomeState extends State<Home> {
                                                         indent: 25.0,
                                                       ),
                                                     ],
-                                                  )
-                                                : SizedBox();
-                                          },
-                                        ),
+                                                  );
+                                                  // : SizedBox();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       Container(
                                         height: MediaQuery.of(context).size.height * 0.05,
@@ -390,6 +483,7 @@ class _HomeState extends State<Home> {
                                                 ? Column(
                                                     children: [
                                                       ListTile(
+                                                        // tileColor: Colors.black,
                                                         leading: Container(
                                                           height: MediaQuery.of(context).size.width * 0.02,
                                                           width: MediaQuery.of(context).size.width * 0.02,
